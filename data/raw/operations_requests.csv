@@ -1,0 +1,14 @@
+request_id,employee_id,department,request_type,submitted_date,completed_date,priority,status
+REQ-1001,EMP-201,IT,System Access,2026-07-01,2026-07-02,High,Completed
+REQ-1002,EMP-202,HR,Onboarding,2026-07-02,2026-07-05,Medium,Completed
+REQ-1003,EMP-203,Finance,Purchase Request,2026-07-03,2026-07-03,Low,Completed
+REQ-1004,,IT,Password Reset,2026-07-04,2026-07-04,High,Completed
+REQ-1005,EMP-205,Facilities,Equipment Request,2026-07-05,,Medium,In Progress
+REQ-1006,EMP-206,Marketing,System Access,2026-07-06,2026-07-08,High,Completed
+REQ-1007,EMP-207,HR,Onboarding,not-a-date,2026-07-10,Medium,Completed
+REQ-1008,EMP-208,Finance,Purchase Request,2026-07-08,2026-07-07,Low,Completed
+REQ-1009,EMP-209,Operations,Workflow Review,2026-07-09,,Urgent,Open
+REQ-1010,EMP-210,IT,System Access,2026-07-10,,High,Open
+REQ-1010,EMP-210,IT,System Access,2026-07-10,,High,Open
+REQ-1011,EMP-211,HR,Onboarding,2026-07-11,2026-07-14,Medium,complete
+REQ-1012,EMP-212,Operations,Workflow Review,2026-07-12,,Low,OPEN
