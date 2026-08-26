@@ -7,6 +7,7 @@ transformations, and performs schema and record-level validation.
 
 from pathlib import Path
 
+
 import pandas as pd
 
 from src.transformers import normalize_statuses
@@ -20,6 +21,9 @@ from src.validators import (
     find_missing_columns,
     find_missing_required_values,
 )
+
+from src.classifiers import classify_records
+from src.writers import write_processed_data
 
 
 # ---------------------------------------------------------------------------
@@ -111,11 +115,26 @@ def main() -> None:
     # Safely normalize known inconsistencies before validation.
     transformed_data = normalize_statuses(raw_data)
 
+    # Identify schema and record-level data-quality problems.
     validation_results = run_validation(transformed_data)
+
+    # Separate usable records from records requiring review.
+    valid_data, quarantined_data = classify_records(
+        transformed_data,
+        validation_results,
+    )
+
+    # Persist both datasets for downstream processing and investigation.
+    write_processed_data(
+        valid_data,
+        quarantined_data,
+    )
 
     print("Operations Data Quality Pipeline")
     print("--------------------------------")
     print(f"Records loaded: {len(raw_data)}")
+    print(f"Valid records: {len(valid_data)}")
+    print(f"Quarantined records: {len(quarantined_data)}")
     print()
 
     print_validation_summary(validation_results)
