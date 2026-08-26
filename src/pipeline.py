@@ -25,6 +25,11 @@ from src.validators import (
 from src.classifiers import classify_records
 from src.writers import write_processed_data
 
+from src.database import (
+    create_connection,
+    create_requests_table,
+    insert_valid_records,
+)
 
 # ---------------------------------------------------------------------------
 # File paths
@@ -129,6 +134,11 @@ def main() -> None:
         valid_data,
         quarantined_data,
     )
+
+    # Store validated records for downstream querying and analysis.
+    with create_connection() as connection:
+        create_requests_table(connection)
+        insert_valid_records(connection, valid_data)
 
     print("Operations Data Quality Pipeline")
     print("--------------------------------")
