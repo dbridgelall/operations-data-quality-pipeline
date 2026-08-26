@@ -130,3 +130,58 @@ def find_invalid_statuses(data: pd.DataFrame) -> pd.DataFrame:
     invalid_mask = ~data["status"].isin(VALID_STATUSES)
 
     return data.loc[invalid_mask].copy()
+
+# ---------------------------------------------------------------------------
+# Date validation
+# ---------------------------------------------------------------------------
+
+def find_invalid_dates(
+    data: pd.DataFrame,
+    date_columns: tuple[str, ...] = ("submitted_date", "completed_date"),
+) -> pd.DataFrame:
+    """
+    Return rows containing malformed non-empty date values.
+
+    Missing completion dates are allowed because open or in-progress
+    requests may not yet have been completed.
+    """
+    invalid_mask = pd.Series(False, index=data.index)
+
+    for column in date_columns:
+        parsed_dates = pd.to_datetime(
+            data[column],
+            format="%Y-%m-%d",
+            errors="coerce",
+        )
+        malformed_dates = data[column].notna() & parsed_dates.isna()
+        invalid_mask |= malformed_dates
+
+    return data.loc[invalid_mask].copy()
+
+
+def find_invalid_date_order(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return rows where completion occurs before submission.
+
+    Malformed or missing dates are ignored by this check because they are
+    handled separately by find_invalid_dates.
+    """
+    submitted_dates = pd.to_datetime(
+        data["submitted_date"],
+        format="%Y-%m-%d",
+        errors="coerce",
+    )
+
+    completed_dates = pd.to_datetime(
+        data["completed_date"],
+        format="%Y-%m-%d",
+        errors="coerce",
+    )
+
+    invalid_order = (
+        submitted_dates.notna()
+        & completed_dates.notna()
+        & (completed_dates < submitted_dates)
+    )
+
+    return data.loc[invalid_order].copy()

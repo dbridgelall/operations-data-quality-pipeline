@@ -13,6 +13,8 @@ from src.validators import (
     find_invalid_statuses,
     find_missing_columns,
     find_missing_required_values,
+    find_invalid_date_order,
+    find_invalid_dates,
 )
 
 
@@ -98,6 +100,26 @@ class TestValidators(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result.iloc[0]["status"], "OPEN")
 
+    def test_find_invalid_dates(self) -> None:
+        """Malformed date values should be flagged."""
+        data = self.data.copy()
+        data.loc[0, "submitted_date"] = "not-a-date"
+
+        result = find_invalid_dates(data)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.iloc[0]["request_id"], "REQ-1")
+
+    def test_find_invalid_date_order(self) -> None:
+        """Completion dates before submission dates should be flagged."""
+        data = self.data.copy()
+        data.loc[0, "submitted_date"] = "2026-07-05"
+        data.loc[0, "completed_date"] = "2026-07-02"
+
+        result = find_invalid_date_order(data)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.iloc[0]["request_id"], "REQ-1")
 
 if __name__ == "__main__":
     unittest.main()
