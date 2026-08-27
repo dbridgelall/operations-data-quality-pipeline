@@ -1,293 +1,508 @@
-Operations Data Quality Pipeline
+# Operations Data Quality Pipeline
 
+[![Python Tests](https://github.com/dbridgelall/operations-data-quality-pipeline/actions/workflows/tests.yml/badge.svg)](https://github.com/dbridgelall/operations-data-quality-pipeline/actions/workflows/tests.yml)
 
-
-A production-style Python data pipeline that ingests operational request data, normalizes correctable inconsistencies, validates business rules, quarantines invalid records, persists clean data to PostgreSQL, and generates SQL-backed operational analytics.
+A production-style **Python data pipeline** that ingests operational request data, normalizes correctable inconsistencies, validates business rules, quarantines invalid records, persists clean data to **SQLite or PostgreSQL**, and generates **SQL-backed operational analytics**.
 
 The project models a realistic internal-operations workflow where incoming data must be checked and cleaned before it can safely support reporting or downstream systems.
 
-Features
+---
 
-Ingests operational request data from CSV files
+## Key Features
 
-Normalizes known status inconsistencies before validation
+- Ingests operational request data from CSV files
+- Normalizes known data inconsistencies before validation
+- Detects missing values, duplicate request IDs, invalid categories, malformed dates, and invalid date sequences
+- Quarantines invalid records while preserving detected quality issues
+- Persists validated records to **SQLite or PostgreSQL**
+- Generates operational analytics using SQL
+- Calculates dataset-level data-quality metrics
+- Generates reproducible **10,000-record synthetic datasets**
+- Supports command-line input selection
+- Containerizes the Python pipeline and PostgreSQL with **Docker Compose**
+- Includes automated unit testing
+- Runs tests automatically through **GitHub Actions CI**
 
-Detects missing values, duplicate request IDs, invalid categories, malformed dates, and invalid date sequences
+---
 
-Quarantines invalid records while preserving detected quality reasons
+## Architecture
 
-Persists validated records to SQLite or PostgreSQL
-
-Generates operational metrics using SQL
-
-Produces dataset-level data-quality metrics
-
-Generates reproducible synthetic datasets with 10,000 records
-
-Supports command-line input selection
-
-Runs PostgreSQL and the Python pipeline with Docker Compose
-
-Uses automated unit tests and GitHub Actions continuous integration
-
-Architecture
-
+```text
                          Raw CSV Data
-                              |
-                              v
-                         Data Ingestion
-                              |
-                              v
-                         Normalization
-                              |
-                              v
-                          Validation
-                              |
-                              v
-                        Classification
-                         /           \
-                        /             \
-                       v               v
-              Valid Records      Quarantined Records
-                   |              + Quality Reasons
-                   v
-              PostgreSQL
-                   |
-                   v
-               SQL Analytics
-                   |
-                   v
-          Operational Metrics
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │  Ingestion  │
+                       └──────┬──────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │Normalize Data│
+                       └──────┬──────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │ Validation  │
+                       └──────┬──────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │Classification│
+                       └──────┬──────┘
+                              │
+                   ┌──────────┴──────────┐
+                   │                     │
+                   ▼                     ▼
+          ┌────────────────┐    ┌─────────────────┐
+          │ Valid Records  │    │   Quarantined   │
+          └───────┬────────┘    │     Records     │
+                  │             │ + Quality Issues│
+                  │             └─────────────────┘
+                  ▼
+          ┌────────────────┐
+          │ SQLite /       │
+          │ PostgreSQL     │
+          └───────┬────────┘
+                  │
+                  ▼
+          ┌────────────────┐
+          │ SQL Analytics  │
+          └───────┬────────┘
+                  │
+                  ▼
+          ┌────────────────┐
+          │ Operational    │
+          │ Metrics        │
+          └────────────────┘
+```
 
-The pipeline separates correctable inconsistencies from records that cannot safely proceed. Known variations are normalized automatically, while records that violate validation rules are quarantined for investigation.
+The pipeline follows a **normalize → validate → classify** approach. Correctable inconsistencies are standardized automatically, while records that cannot safely proceed are quarantined for investigation.
 
-Technology Stack
+---
 
-Technology
+## Technology Stack
 
-Purpose
+| Technology | Role in Project |
+| --- | --- |
+| **Python 3.13** | Pipeline orchestration and application logic |
+| **Pandas** | CSV ingestion, transformations, validation, and reporting |
+| **SQL** | Database queries and operational analytics |
+| **SQLite** | Lightweight local development and isolated testing |
+| **PostgreSQL** | Production-style relational data persistence |
+| **psycopg** | Python-to-PostgreSQL connectivity |
+| **Docker** | Application and database containerization |
+| **Docker Compose** | Multi-container orchestration |
+| **unittest** | Automated unit testing |
+| **GitHub Actions** | Continuous integration |
+| **Git / GitHub** | Version control and project hosting |
 
-Python 3.13
+---
 
-Pipeline orchestration and application logic
+## Data Quality Validation
 
-Pandas
+The validation layer checks incoming records before they are allowed into the validated dataset.
 
-Data ingestion, transformation, validation, and reporting
+| Validation | What It Detects |
+| --- | --- |
+| Required schema | Missing required columns |
+| Required values | Incomplete records |
+| Duplicate request IDs | Duplicate operational requests |
+| Department validation | Unsupported departments |
+| Priority validation | Unsupported priority values |
+| Status validation | Unsupported workflow statuses |
+| Date validation | Missing or malformed date values |
+| Date-order validation | Completion dates occurring before submission dates |
 
-SQL
+### Normalize Before Rejecting
 
-Operational analytics and database queries
+Not every inconsistent value needs to be discarded.
 
-SQLite
+For example:
 
-Lightweight local database development and testing
+```text
+OPEN
+```
 
-PostgreSQL
+can safely be normalized to:
 
-Production-style relational data persistence
+```text
+Open
+```
 
-psycopg
+before validation.
 
-Python/PostgreSQL connectivity
+Records are quarantined only when the pipeline cannot safely resolve the underlying quality issue.
 
-Docker
+---
 
-Application and database containerization
+## Data Classification
 
-Docker Compose
+After validation, records are separated into two outputs:
 
-Multi-container orchestration
+```text
+Incoming Records
+       │
+       ▼
+   Validation
+       │
+       ├──────── Valid ────────► valid_requests.csv
+       │
+       └──────── Invalid ──────► quarantined_requests.csv
+                                      │
+                                      └── quality_issues
+```
 
-unittest
+Quarantined records retain their detected quality issues so problems can be investigated rather than silently discarded.
 
-Automated unit testing
+A single record can contain more than one issue.
 
-GitHub Actions
+---
 
-Continuous integration
+## Verified 10,000-Record Benchmark
 
-Git / GitHub
+The project includes a reproducible synthetic data generator for exercising the pipeline at a larger scale.
 
-Version control and project hosting
+A verified 10,000-record run produced:
 
-Data Quality Checks
+| Metric | Result |
+| --- | ---: |
+| **Total Records** | **10,000** |
+| **Valid Records** | **9,920** |
+| **Quarantined Records** | **80** |
+| **Quality Rate** | **99.20%** |
+| **Detected Record-Level Issues** | **80** |
 
-The validation layer currently checks for:
+### Injected Quality Problems
 
-Check
+| Problem | Records Detected |
+| --- | ---: |
+| Missing required values | 20 |
+| Invalid departments | 20 |
+| Invalid priorities | 20 |
+| Malformed dates | 20 |
+| Invalid statuses after normalization | 0 |
 
-Purpose
+The generator also injects known status variations. Those values are corrected during normalization and therefore do not require quarantine.
 
-Required schema
+Because multiple validation problems can occur on the same record, the number of detected issues may differ from the number of quarantined records in other generated datasets.
 
-Detect missing required columns
+---
 
-Required values
+## Example Analytics
 
-Detect incomplete records
+Validated records are persisted to a relational database and queried to produce operational metrics.
 
-Duplicate request IDs
+The verified 10,000-record run produced:
 
-Prevent duplicate operational requests
+```text
+Operational Analytics
+---------------------
+Total validated requests: 9,926
+Average processing time: 5.1 days
 
-Department validation
+Requests by Department
+----------------------
+Finance       2,045
+IT            2,034
+Facilities    1,994
+HR            1,955
+Operations    1,898
 
-Reject unsupported departments
+Requests by Status
+------------------
+Completed      3,359
+In Progress    3,326
+Open           3,241
+```
 
-Priority validation
+> **Note:** The analytics database used for this run already contained records from previous pipeline executions, while the dataset-quality metrics describe the current 10,000-record input. The persistence layer uses upsert behavior rather than replacing the database with a snapshot on every run.
 
-Reject unsupported priority values
+---
 
-Status validation
+## Project Structure
 
-Detect unsupported workflow statuses
-
-Date validation
-
-Detect malformed dates
-
-Date-order validation
-
-Prevent completion dates preceding submission dates
-
-Known status variations are normalized before validation. For example, correctable values such as OPEN can be standardized to Open instead of unnecessarily quarantining the record.
-
-Project Structure
-
+```text
 operations-data-quality-pipeline/
-|
-|-- .github/
-|   `-- workflows/
-|       `-- tests.yml
-|
-|-- data/
-|   |-- raw/
-|   `-- processed/
-|
-|-- src/
-|   |-- analytics.py
-|   |-- classifiers.py
-|   |-- config.py
-|   |-- database.py
-|   |-- generator.py
-|   |-- pipeline.py
-|   |-- quality_metrics.py
-|   |-- transformers.py
-|   |-- validators.py
-|   `-- writers.py
-|
-|-- tests/
-|
-|-- .dockerignore
-|-- .env.example
-|-- .gitignore
-|-- Dockerfile
-|-- docker-compose.yml
-|-- requirements.txt
-`-- README.md
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+│
+├── data/
+│   ├── raw/
+│   └── processed/
+│
+├── src/
+│   ├── analytics.py
+│   ├── classifiers.py
+│   ├── config.py
+│   ├── database.py
+│   ├── generator.py
+│   ├── pipeline.py
+│   ├── quality_metrics.py
+│   ├── transformers.py
+│   ├── validators.py
+│   └── writers.py
+│
+├── tests/
+│
+├── .dockerignore
+├── .env.example
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
 
-Generated databases, processed datasets, large synthetic datasets, and local environment configuration are intentionally excluded from version control.
+Generated databases, processed datasets, large synthetic datasets, virtual environments, and local credentials are excluded from version control.
 
-Getting Started
+---
 
-Clone the repository
+## Getting Started
 
+### 1. Clone the Repository
+
+```bash
 git clone https://github.com/dbridgelall/operations-data-quality-pipeline.git
 cd operations-data-quality-pipeline
+```
 
-Local Python setup
+### 2. Create a Virtual Environment
 
-Create a virtual environment:
-
+```bash
 python -m venv .venv
+```
 
 Activate it on Windows PowerShell:
 
+```powershell
 .\.venv\Scripts\Activate.ps1
+```
 
-Install dependencies:
+### 3. Install Dependencies
 
+```bash
 pip install -r requirements.txt
+```
 
-Run the included sample dataset:
+### 4. Run the Sample Pipeline
 
+```bash
 python -m src.pipeline
+```
 
-Generate a larger demonstration dataset
+The included sample dataset intentionally contains multiple quality problems so the validation and quarantine workflow can be demonstrated.
 
+---
+
+## Generate a 10,000-Record Dataset
+
+Generate the reproducible synthetic dataset:
+
+```bash
 python -m src.generator
+```
 
-The generator creates a reproducible synthetic operational dataset containing 10,000 records with intentionally injected data-quality problems.
+The generated file is written to:
 
-Process the generated dataset with:
+```text
+data/raw/generated_operations_requests.csv
+```
 
+Process it with:
+
+```bash
 python -m src.pipeline --input data/raw/generated_operations_requests.csv
+```
 
-Running with Docker
+Generated datasets are intentionally excluded from Git because they can be reproduced at any time.
 
-Copy the example environment configuration:
+---
 
+## Running with PostgreSQL and Docker
+
+The project supports a fully containerized environment consisting of:
+
+```text
+             Docker Compose
+                    │
+          ┌─────────┴─────────┐
+          │                   │
+          ▼                   ▼
+   Python Pipeline       PostgreSQL
+      Container           Container
+          │                   ▲
+          └───────────────────┘
+```
+
+### 1. Create Local Environment Configuration
+
+Copy the example configuration:
+
+```bash
 cp .env.example .env
+```
 
-On Windows PowerShell:
+Windows PowerShell:
 
+```powershell
 Copy-Item .env.example .env
+```
 
-Update the local PostgreSQL password in .env, then build and start the services:
+Update the PostgreSQL password in `.env`.
 
+> `.env` is excluded from Git so local database credentials are not committed to the repository.
+
+### 2. Build and Start
+
+```bash
 docker compose up --build
+```
 
-Docker Compose starts PostgreSQL, waits for the database health check to pass, and then executes the Python pipeline. The pipeline container exits after processing completes, while PostgreSQL remains available for queries.
+Docker Compose will:
 
-To stop the environment:
+1. Build the Python pipeline image
+2. Start PostgreSQL
+3. Wait for the PostgreSQL health check
+4. Start the Python pipeline
+5. Connect the pipeline to PostgreSQL
+6. Process and validate the sample dataset
+7. Persist validated records
+8. Generate SQL-backed analytics
 
+The pipeline is a batch-processing application, so successful execution ends with:
+
+```text
+operations-pipeline exited with code 0
+```
+
+PostgreSQL remains available after the pipeline completes.
+
+### 3. Stop the Environment
+
+```bash
 docker compose down
+```
 
-Testing
+To also remove the development database volume:
 
-Run the complete test suite:
+```bash
+docker compose down -v
+```
 
+---
+
+## Testing
+
+Run the complete automated test suite with:
+
+```bash
 python -m unittest discover -v
+```
 
-The automated test suite covers transformations, validation, classification, persistence, SQL analytics, configuration, synthetic data generation, output handling, and data-quality metrics.
+The test suite covers areas including:
 
-GitHub Actions automatically executes the test suite for pushes and pull requests targeting main.
+- Data transformations
+- Schema and record validation
+- Record classification
+- Database persistence
+- SQL analytics
+- Configuration
+- Synthetic data generation
+- Output handling
+- Data-quality metrics
 
-Example 10,000-Record Run
+---
 
-The synthetic data generator can exercise the pipeline at a larger scale while preserving reproducibility.
+## Continuous Integration
 
-Verified example output:
+GitHub Actions automatically creates a clean environment, installs the project's dependencies, and executes the complete test suite for:
 
-Total records: 10,000
-Valid records: 9,920
-Quarantined records: 80
-Quality rate: 99.20%
-Detected record-level issues: 80
+```text
+Push to main
+      │
+      ▼
+GitHub Actions
+      │
+      ▼
+Python 3.13
+      │
+      ▼
+Install Dependencies
+      │
+      ▼
+Run Unit Tests
+      │
+      ▼
+   PASS / FAIL
+```
 
-The generated benchmark contained 20 missing required values, 20 invalid departments, 20 invalid priorities, and 20 malformed dates. Known status variations were normalized before validation and therefore did not require quarantine.
+The workflow runs automatically on:
 
-Because validation issues can overlap on the same record, the number of detected issues can differ from the number of quarantined records in other generated datasets.
+- Pushes to `main`
+- Pull requests targeting `main`
 
-Design Decisions
+This helps catch regressions before new code is incorporated into the project.
 
-Normalize before rejecting
+---
 
-Correctable inconsistencies are normalized before validation. Records are quarantined only when the pipeline cannot safely resolve the underlying issue.
+## Design Decisions
 
-Preserve rejection reasons
+### Modular Pipeline Architecture
 
-A record can violate multiple quality rules. Quarantined records retain detected quality issues so failures can be investigated instead of silently discarded.
+Ingestion, transformation, validation, classification, persistence, analytics, and reporting are separated into reusable modules rather than implemented as one large function.
 
-Separate pipeline responsibilities
+### Preserve Rejected Data
 
-Ingestion, transformation, validation, classification, persistence, analytics, and reporting are implemented as separate reusable components instead of one large pipeline function.
+Invalid records are quarantined instead of deleted. This preserves the original data and associated quality issues for investigation.
 
-Support multiple relational databases
+### Normalize Correctable Values
 
-SQLite provides lightweight local development and isolated testing, while PostgreSQL provides a more production-oriented persistence layer. Database-specific SQL is handled explicitly where the dialects differ.
+Known inconsistencies are corrected before validation when they can be resolved safely.
 
-Keep generated artifacts out of version control
+### Multiple Database Backends
 
-Processed CSV files, generated databases, large synthetic datasets, and local credentials are reproducible runtime artifacts and are excluded from Git.
+SQLite provides lightweight local development and isolated testing, while PostgreSQL provides a more production-oriented relational database environment.
+
+### Reproducible Synthetic Data
+
+The synthetic generator uses a fixed random seed so benchmark datasets can be recreated consistently.
+
+### Containerized Execution
+
+Docker separates the application's runtime environment from the developer's local machine, while Docker Compose coordinates the pipeline and PostgreSQL services.
+
+### Automated Verification
+
+Unit tests and GitHub Actions provide repeatable checks that changes have not broken existing behavior.
+
+---
+
+## Skills Demonstrated
+
+This project demonstrates practical experience with:
+
+**Python • Pandas • SQL • PostgreSQL • SQLite • Docker • Docker Compose • GitHub Actions • CI • Git • GitHub • Unit Testing • Data Validation • ETL/Data Pipelines • Data Quality • Relational Databases • CLI Development**
+
+---
+
+## Future Improvements
+
+Potential extensions include:
+
+- Structured application logging
+- Configurable validation rules
+- Database migration tooling
+- Pipeline execution statistics
+- Additional data-quality dimensions
+- Scheduled pipeline execution
+- REST API or dashboard for reviewing quarantined records
+
+---
+
+## Project Status
+
+**Core pipeline complete.**
+
+The current implementation supports data ingestion, normalization, validation, quarantine handling, quality measurement, relational persistence, SQL analytics, synthetic dataset generation, automated testing, continuous integration, and containerized execution.
