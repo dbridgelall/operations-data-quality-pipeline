@@ -8,6 +8,7 @@ can be verified without modifying development data.
 import sqlite3
 import unittest
 
+
 import pandas as pd
 
 from src.analytics import (
@@ -15,6 +16,7 @@ from src.analytics import (
     get_requests_by_department,
     get_requests_by_status,
     get_total_request_count,
+    query_to_dataframe,
 )
 from src.database import (
     create_requests_table,
@@ -101,6 +103,23 @@ class TestAnalytics(unittest.TestCase):
 
         self.assertEqual(result, 2.0)
 
+    def test_query_to_dataframe_returns_query_results(self) -> None:
+        """SQL query results should be converted into a labeled DataFrame."""
+        result = query_to_dataframe(
+            self.connection,
+            """
+            SELECT request_id, department
+            FROM operational_requests
+            ORDER BY request_id
+            """,
+        )
 
+        self.assertEqual(
+            result.columns.tolist(),
+            ["request_id", "department"],
+        )
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result.iloc[0]["request_id"], "REQ-1")
+    
 if __name__ == "__main__":
     unittest.main()

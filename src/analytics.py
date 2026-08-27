@@ -11,6 +11,37 @@ from typing import Any
 import pandas as pd
 
 # ---------------------------------------------------------------------------
+# Query execution helpers
+# ---------------------------------------------------------------------------
+
+def query_to_dataframe(
+    connection: Any,
+    query: str,
+) -> pd.DataFrame:
+    """
+    Execute a SQL query and return the results as a DataFrame.
+
+    This helper works with both SQLite and PostgreSQL connections without
+    relying on pandas database-connection compatibility behavior.
+
+    Args:
+        connection: Active relational database connection.
+        query: SQL query to execute.
+
+    Returns:
+        Query results represented as a DataFrame.
+    """
+    cursor = connection.execute(query)
+
+    rows = cursor.fetchall()
+    columns = [
+        column.name if hasattr(column, "name") else column[0]
+        for column in cursor.description
+    ]
+
+    return pd.DataFrame(rows, columns=columns)
+
+# ---------------------------------------------------------------------------
 # Request metrics
 # ---------------------------------------------------------------------------
 
@@ -55,7 +86,7 @@ def get_requests_by_department(
         ORDER BY request_count DESC, department ASC
     """
 
-    return pd.read_sql_query(query, connection)
+    return query_to_dataframe(connection, query)
 
 
 def get_requests_by_status(
@@ -79,7 +110,7 @@ def get_requests_by_status(
         ORDER BY request_count DESC, status ASC
     """
 
-    return pd.read_sql_query(query, connection)
+    return query_to_dataframe(connection, query)
 
 # ---------------------------------------------------------------------------
 # Processing-time metrics
