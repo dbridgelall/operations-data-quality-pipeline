@@ -4,9 +4,9 @@ services:
     container_name: operations-postgres
 
     environment:
-      POSTGRES_DB: operations
-      POSTGRES_USER: operations_user
-      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
       - "5432:5432"
@@ -18,11 +18,33 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U operations_user -d operations"
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
         ]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: operations-pipeline
+
+    environment:
+      DATABASE_BACKEND: postgres
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - ./data/processed:/app/data/processed
 
 volumes:
   postgres_data:
