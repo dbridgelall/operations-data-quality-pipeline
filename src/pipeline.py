@@ -31,6 +31,8 @@ from src.database import (
     insert_valid_records,
 )
 
+from src.analytics import print_analytics_summary
+
 # ---------------------------------------------------------------------------
 # File paths
 # ---------------------------------------------------------------------------
@@ -140,6 +142,8 @@ def main() -> None:
         create_requests_table(connection)
         insert_valid_records(connection, valid_data)
 
+    print_analytics_summary(connection)
+
     print("Operations Data Quality Pipeline")
     print("--------------------------------")
     print(f"Records loaded: {len(raw_data)}")
@@ -148,7 +152,6 @@ def main() -> None:
     print()
 
     print_validation_summary(validation_results)
-
 
 if __name__ == "__main__":
     main()
