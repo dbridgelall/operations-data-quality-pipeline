@@ -152,12 +152,16 @@ def insert_valid_records(
         "status",
     ]
 
-    records = list(
-        data[columns].itertuples(
-            index=False,
-            name=None,
-        )
+    records = [
+    tuple(
+        None if pd.isna(value) else value
+        for value in row
     )
+    for row in data[columns].itertuples(
+        index=False,
+        name=None,
+    )
+]
 
     if isinstance(connection, sqlite3.Connection):
         query = """

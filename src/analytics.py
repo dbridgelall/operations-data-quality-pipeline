@@ -6,15 +6,15 @@ records into business-level metrics and summaries.
 """
 
 import sqlite3
+from typing import Any
 
 import pandas as pd
-
 
 # ---------------------------------------------------------------------------
 # Request metrics
 # ---------------------------------------------------------------------------
 
-def get_total_request_count(connection: sqlite3.Connection) -> int:
+def get_total_request_count(connection: Any) -> int:
     """
     Return the total number of validated operational requests.
 
@@ -35,7 +35,7 @@ def get_total_request_count(connection: sqlite3.Connection) -> int:
 
 
 def get_requests_by_department(
-    connection: sqlite3.Connection,
+    connection: Any,
 ) -> pd.DataFrame:
     """
     Return request counts grouped by department.
@@ -59,7 +59,7 @@ def get_requests_by_department(
 
 
 def get_requests_by_status(
-    connection: sqlite3.Connection,
+    connection: Any,
 ) -> pd.DataFrame:
     """
     Return request counts grouped by status.
@@ -86,24 +86,36 @@ def get_requests_by_status(
 # ---------------------------------------------------------------------------
 
 def get_average_processing_days(
-    connection: sqlite3.Connection,
+    connection: Any,
 ) -> float:
     """
     Return the average completion time for completed requests.
 
+    Uses database-specific SQL where date arithmetic differs between
+    SQLite and PostgreSQL.
+
     Args:
-        connection: Active database connection.
+        connection: Active relational database connection.
 
     Returns:
         Average number of days between submission and completion.
     """
-    query = """
-        SELECT AVG(
-            julianday(completed_date) - julianday(submitted_date)
-        )
-        FROM operational_requests
-        WHERE completed_date IS NOT NULL
-    """
+    if isinstance(connection, sqlite3.Connection):
+        query = """
+            SELECT AVG(
+                julianday(completed_date) - julianday(submitted_date)
+            )
+            FROM operational_requests
+            WHERE completed_date IS NOT NULL
+        """
+    else:
+        query = """
+            SELECT AVG(
+                completed_date::date - submitted_date::date
+            )
+            FROM operational_requests
+            WHERE completed_date IS NOT NULL
+        """
 
     result = connection.execute(query).fetchone()
 
@@ -116,7 +128,7 @@ def get_average_processing_days(
 # Analytics reporting
 # ---------------------------------------------------------------------------
 
-def print_analytics_summary(connection: sqlite3.Connection) -> None:
+def print_analytics_summary(connection: Any) -> None:
     """
     Print key operational metrics generated from SQL queries.
 

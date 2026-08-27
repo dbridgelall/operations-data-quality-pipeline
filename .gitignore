@@ -231,3 +231,6 @@ __marimo__/
 
 data/raw/generated_operations_requests.csv
 data/processed/*.csv
+
+# Local environment configuration
+.env

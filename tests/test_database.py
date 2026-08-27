@@ -80,6 +80,21 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(result[0], 2)
 
+    def test_missing_values_are_stored_as_null(self) -> None:
+        """Missing Pandas values should be persisted as SQL NULL."""
+        create_requests_table(self.connection)
+        insert_valid_records(self.connection, self.data)
+
+        result = self.connection.execute(
+            """
+            SELECT completed_date
+            FROM operational_requests
+            WHERE request_id = 'REQ-2'
+            """
+        ).fetchone()
+
+        self.assertIsNone(result[0])
+
 
 if __name__ == "__main__":
     unittest.main()
