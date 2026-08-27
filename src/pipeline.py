@@ -7,8 +7,8 @@ transformations, and performs schema and record-level validation.
 
 from pathlib import Path
 
-
 import pandas as pd
+import argparse
 
 from src.transformers import normalize_statuses
 from src.validators import (
@@ -32,6 +32,11 @@ from src.database import (
 )
 
 from src.analytics import print_analytics_summary
+
+from src.quality_metrics import (
+    calculate_quality_metrics,
+    print_quality_metrics,
+)
 
 # ---------------------------------------------------------------------------
 # File paths
@@ -110,14 +115,45 @@ def print_validation_summary(results: dict[str, object]) -> None:
         readable_name = check_name.replace("_", " ").title()
         print(f"{readable_name}: {issue_count}")
 
+# ---------------------------------------------------------------------------
+# Command-line interface
+# ---------------------------------------------------------------------------
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Parse command-line arguments for pipeline execution.
+
+    Returns:
+        Parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description=(
+            "Validate, clean, classify, and analyze "
+            "operational request data."
+        )
+    )
+
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=DATA_PATH,
+        help="Path to the operational request CSV file.",
+    )
+
+    return parser.parse_args()
 
 # ---------------------------------------------------------------------------
 # Pipeline execution
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    """Run the complete data-quality pipeline."""
-    raw_data = load_data()
+def main(file_path: Path = DATA_PATH) -> None:
+    """
+    Run the complete data-quality pipeline.
+
+    Args:
+        file_path: Raw operational dataset to process.
+    """
+    raw_data = load_data(file_path)
 
     # Safely normalize known inconsistencies before validation.
     transformed_data = normalize_statuses(raw_data)
@@ -131,27 +167,37 @@ def main() -> None:
         validation_results,
     )
 
-    # Persist both datasets for downstream processing and investigation.
+    # Calculate dataset-level quality metrics.
+    quality_metrics = calculate_quality_metrics(
+        transformed_data,
+        validation_results,
+        quarantined_data,
+    )
+
+    # Persist processed datasets for downstream use and investigation.
     write_processed_data(
         valid_data,
         quarantined_data,
     )
 
-    # Store validated records for downstream querying and analysis.
+    # Store validated records and generate database-backed analytics.
     with create_connection() as connection:
         create_requests_table(connection)
         insert_valid_records(connection, valid_data)
 
-    print_analytics_summary(connection)
+        print_analytics_summary(connection)
 
+    print()
     print("Operations Data Quality Pipeline")
     print("--------------------------------")
-    print(f"Records loaded: {len(raw_data)}")
-    print(f"Valid records: {len(valid_data)}")
-    print(f"Quarantined records: {len(quarantined_data)}")
+    print(f"Source: {file_path.name}")
+    print()
+
+    print_quality_metrics(quality_metrics)
     print()
 
     print_validation_summary(validation_results)
 
 if __name__ == "__main__":
-    main()
+    arguments = parse_arguments()
+    main(arguments.input)
