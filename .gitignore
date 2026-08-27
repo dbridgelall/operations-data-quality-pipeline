@@ -224,3 +224,10 @@ __marimo__/
 *.db
 *.db-shm
 *.db-wal
+
+# ---------------------------------------------------------------------------
+# Generated pipeline data
+# ---------------------------------------------------------------------------
+
+data/raw/generated_operations_requests.csv
+data/processed/*.csv

@@ -1,8 +1,0 @@
-request_id,employee_id,department,request_type,submitted_date,completed_date,priority,status,quality_issues
-REQ-1004,,IT,Password Reset,2026-07-04,2026-07-04,High,Completed,missing_required_values
-REQ-1006,EMP-206,Marketing,System Access,2026-07-06,2026-07-08,High,Completed,invalid_departments
-REQ-1007,EMP-207,HR,Onboarding,not-a-date,2026-07-10,Medium,Completed,invalid_dates
-REQ-1008,EMP-208,Finance,Purchase Request,2026-07-08,2026-07-07,Low,Completed,invalid_date_order
-REQ-1009,EMP-209,Operations,Workflow Review,2026-07-09,,Urgent,Open,invalid_priorities
-REQ-1010,EMP-210,IT,System Access,2026-07-10,,High,Open,duplicate_request_ids
-REQ-1010,EMP-210,IT,System Access,2026-07-10,,High,Open,duplicate_request_ids

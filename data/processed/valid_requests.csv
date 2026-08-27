@@ -1,7 +1,0 @@
-request_id,employee_id,department,request_type,submitted_date,completed_date,priority,status
-REQ-1001,EMP-201,IT,System Access,2026-07-01,2026-07-02,High,Completed
-REQ-1002,EMP-202,HR,Onboarding,2026-07-02,2026-07-05,Medium,Completed
-REQ-1003,EMP-203,Finance,Purchase Request,2026-07-03,2026-07-03,Low,Completed
-REQ-1005,EMP-205,Facilities,Equipment Request,2026-07-05,,Medium,In Progress
-REQ-1011,EMP-211,HR,Onboarding,2026-07-11,2026-07-14,Medium,Completed
-REQ-1012,EMP-212,Operations,Workflow Review,2026-07-12,,Low,Open
